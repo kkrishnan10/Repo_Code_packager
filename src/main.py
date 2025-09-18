@@ -158,6 +158,12 @@ def main():
         help = "Estimate and display the token count for the context."
     )
 
+        parser.add_argument(
+        "-r", "--recent",
+        action="store_true",
+        help="Only include files modified in the last 7 days."
+    )
+
     # pare the argument
     args = parser.parse_args()
 
