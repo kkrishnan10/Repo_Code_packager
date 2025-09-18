@@ -125,6 +125,14 @@ def generate_summary(file_list, total_lines):
         f"- Total lines: {total_lines}"
     )
     return summary_string
+from datetime import datetime, timedelta
+
+def is_recently_modified(file_path, days=7):
+    try:
+        last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+        return datetime.now() - last_modified <= timedelta(days=days)
+    except FileNotFoundError:
+        return False
 
 def main():
     # ArgumentParser object creation
@@ -157,6 +165,11 @@ def main():
         action = "store_true", #This makes it a flag, like --version
         help = "Estimate and display the token count for the context."
     )
+        parser.add_argument(
+        "-r", "--recent",
+        action="store_true",
+        help="Only include files modified in the last 7 days."
+    )
 
     # pare the argument
     args = parser.parse_args()
@@ -166,6 +179,10 @@ def main():
 
     # get all the files from provided path
     file_list = get_all_files(args.paths)
+
+    if args.recent:
+        file_list = [f for f in file_list if is_recently_modified(f, 7)]
+
 
     if not file_list:
         print("Error: No files found in the specified paths.", file=sys.stderr)
@@ -189,6 +206,41 @@ def main():
 ## Structure
 
 {structure_tree_str}
+
+    recent_section = ""
+    if args.recent:
+        recent_section = "## Recent Changes\n"
+        if file_list:
+            for f in file_list:
+                days_ago = (datetime.now() - datetime.fromtimestamp(os.path.getmtime(f))).days
+                recent_section += f"- {os.path.relpath(f, base_path)} (modified {days_ago} days ago)\n"
+        else:
+            recent_section += "No files modified in the last 7 days.\n"
+
+    final_output = f"""# Repository Context
+
+## File System Location
+
+{base_path}
+
+## Git Info
+
+{git_info_str}
+
+## Structure
+
+{structure_tree_str}
+
+{recent_section}
+
+## File Contents
+
+{file_contents_str}
+
+## Summary
+
+{summary_str}
+"""
 
 ## File Contents
 
