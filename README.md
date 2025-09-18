@@ -56,6 +56,16 @@ python src/main.py --help
 
 - command may be updated later
 
+- To only include files modified in the last 7 days:
+  
+python src/main.py . --recent
+
+- Can be combined with `-o` to save output:
+  
+python src/main.py . -r -o recent.txt
+
+
+
 # License
 This project is licensed under the MIT License.
 
