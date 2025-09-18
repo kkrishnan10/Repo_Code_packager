@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 # main.py
 import argparse
 import sys
@@ -126,6 +127,28 @@ def generate_summary(file_list, total_lines):
     )
     return summary_string
 
+def is_recently_modified(file_path, days=7):
+    """Return True if file was modified within the last `days` days."""
+    try:
+        mtime = os.path.getmtime(file_path)
+        return (datetime.now() - datetime.fromtimestamp(mtime)) <= timedelta(days=days)
+    except FileNotFoundError:
+        return False
+
+
+def days_ago_str(file_path):
+    """Human-friendly 'N days ago' for a file's mtime."""
+    try:
+        mtime = os.path.getmtime(file_path)
+        diff_days = (datetime.now() - datetime.fromtimestamp(mtime)).days
+        if diff_days <= 0:
+            return "today"
+        if diff_days == 1:
+            return "1 day ago"
+        return f"{diff_days} days ago"
+    except FileNotFoundError:
+        return "unknown"
+
 def main():
     # ArgumentParser object creation
     parser = argparse.ArgumentParser(
@@ -158,6 +181,12 @@ def main():
         help = "Estimate and display the token count for the context."
     )
 
+        parser.add_argument(
+        "-r", "--recent",
+        action="store_true",
+        help="Only include files modified in the last 7 days."
+    )
+
     # pare the argument
     args = parser.parse_args()
 
@@ -167,6 +196,10 @@ def main():
     # get all the files from provided path
     file_list = get_all_files(args.paths)
 
+    if args.recent:
+        file_list = [f for f in file_list if is_recently_modified(f, 7)]
+
+
     if not file_list:
         print("Error: No files found in the specified paths.", file=sys.stderr)
         sys.exit(1)
@@ -175,6 +208,17 @@ def main():
     structure_tree_str = create_structure_tree(file_list, base_path)
     file_contents_str, total_lines, total_chars = format_file_contents(file_list, base_path)
     summary_str = generate_summary(file_list, total_lines)
+
+    recent_section = ""
+    if args.recent:
+        recent_section_lines = ["## Recent Changes"]
+        if file_list:
+            for f in sorted(file_list):
+                rel = os.path.relpath(f, base_path)
+                recent_section_lines.append(f"- {rel} (modified {days_ago_str(f)})")
+        else:
+            recent_section_lines.append("No files modified in the last 7 days.")
+        recent_section = "\n".join(recent_section_lines) + "\n"
 
     final_output = f"""# Repository Context
 
@@ -189,6 +233,29 @@ def main():
 ## Structure
 
 {structure_tree_str}
+
+    final_output = f"""# Repository Context
+
+## File System Location
+
+{base_path}
+
+## Git Info
+
+{git_info_str}
+
+## Structure
+
+{structure_tree_str}
+
+{recent_section}## File Contents
+
+{file_contents_str}
+
+## Summary
+
+{summary_str}
+"""
 
 ## File Contents
 
